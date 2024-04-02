@@ -28,6 +28,6 @@ def get_sets_by_unicode(filename, unicode_char):
 
 # Пример использования:
 filename = 'Data.txt'
-print(count_sets_per_line(filename, 3))  # Замените 3 на нужное число наборов
-print(count_occurrences(filename, '001'))  # Замените '001' на нужный трёхсимвольный набор
-print(get_sets_by_unicode(filename, 'U+4E00'))  # Замените 'U+4E00' на нужный Юникод иероглифа
+print(count_sets_per_line(filename, 3))
+print(count_occurrences(filename, '001'))
+print(get_sets_by_unicode(filename, 'U+4E00'))
