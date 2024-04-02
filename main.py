@@ -1,5 +1,17 @@
 from PIL import Image, ImageTk
 import tkinter as tk
+import sys
+import os
+
+# Функция для определения пути к ресурсам
+def resource_path(relative_path):
+    try:
+        # PyInstaller создает временную папку и хранит путь в переменной _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # Создание основного окна приложения
 def create_app():
@@ -8,7 +20,8 @@ def create_app():
     app.geometry('800x600')  # Установка размера окна
 
     # Установка фона окна
-    img = Image.open('tools/background_image.png')
+    background_image_path = resource_path('tools/background_image.png')
+    img = Image.open(background_image_path)
     img = img.convert('RGBA')
     tk_img = ImageTk.PhotoImage(img)
     background_label = tk.Label(app, image=tk_img)
