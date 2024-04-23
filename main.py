@@ -5,7 +5,7 @@ import sys
 import os
 from openpyxl import Workbook, load_workbook
 import pandas as pd
-from Analyst import read_data_from_file, count_glyphs, find_repeated_glyphs, find_all_repeated_patterns, count_glyphs_in_uni, output_to_excel
+from Analyst import read_data_from_file, count_glyphs, find_repeated_glyphs, find_all_repeated_patterns, count_glyphs_in_uni, output_to_excel, find_same_glyph_sets
 
 # Функция для определения пути к ресурсам
 def resource_path(relative_path):
@@ -48,7 +48,7 @@ def create_app():
     app.geometry('800x600')  # Установка размера окна
 
     # Установка фона окна
-    background_image_path = resource_path('tools/background_image.png')
+    background_image_path = resource_path('tools/background_image.jpg')
     img = Image.open(background_image_path)
     img = img.convert('RGBA')
     tk_img = ImageTk.PhotoImage(img)
@@ -97,6 +97,10 @@ def create_app():
     button4 = tk.Button(center_frame, text='Вывод данных о длинах иероглифов',
                         command=lambda: run_analysis(count_glyphs_in_uni))
     button4.pack(fill='x')
+
+    button5 = tk.Button(center_frame, text='Вывод данных о одинаковых наборах графем',
+                        command=lambda: run_analysis(find_same_glyph_sets))
+    button5.pack(fill='x')
 
     app.background_image = tk_img
 

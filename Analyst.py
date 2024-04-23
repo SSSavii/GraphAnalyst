@@ -54,29 +54,23 @@ def count_glyphs_in_uni(glyph_data):
         count_dict[glyph_count] = count_dict.get(glyph_count, 0) + 1
     return count_dict
 
+def find_same_glyph_sets(glyph_data):
+    same_glyph_sets = {}
+    for unicode, glyphs in glyph_data.items():
+        sorted_glyphs = tuple(sorted(glyphs))  # Сортируем графемы для их сравнения
+        if sorted_glyphs in same_glyph_sets:
+            # Если набор графем уже есть в словаре и уникод отсутствует в списке, добавляем его
+            if unicode not in same_glyph_sets[sorted_glyphs]:
+                same_glyph_sets[sorted_glyphs].append(unicode)
+        else:
+            # Если набор графем еще не встречался, добавляем его в словарь с единственным уникодом
+            same_glyph_sets[sorted_glyphs] = [unicode]
+    # Фильтруем словарь, оставляя только те наборы графем, которые имеют 2 или более уникода
+    same_glyph_sets = {k: v for k, v in same_glyph_sets.items() if len(v) >= 2}
+    return same_glyph_sets
 # Функция для вывода данных в Excel
 def output_to_excel(data_dict, filename='output.xlsx'):
     with pd.ExcelWriter(filename, engine='openpyxl') as writer:
         for sheet_name, data in data_dict.items():
             df = pd.DataFrame(list(data.items()), columns=['Key', 'Value'])
             df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-# Использование функции чтения данных из файла
-glyph_data = read_data_from_file('data.txt')
-
-# Использование функций анализа данных
-glyph_count = count_glyphs(glyph_data)
-repeated_glyphs = find_repeated_glyphs(glyph_data)
-all_repeated_patterns = find_all_repeated_patterns(glyph_data)
-glyphs_in_uni_count = count_glyphs_in_uni(glyph_data)
-
-# Создание словаря с данными для вывода в Excel
-data_to_output = {
-    'Счётчик графем': glyph_count,
-    'Повторяющиеся графемы': repeated_glyphs,
-    'Все повторяющиеся паттерны': all_repeated_patterns,
-    'Количество иероглифов по количеству графем': glyphs_in_uni_count
-}
-
-# Использование функции вывода данных в Excel
-output_to_excel(data_to_output)
