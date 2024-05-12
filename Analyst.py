@@ -1,5 +1,5 @@
 import pandas as pd
-
+import re
 # Считываем данные из файла и сохраняем в словарь
 def read_data_from_file(filename):
     glyph_data = {}
@@ -74,3 +74,42 @@ def output_to_excel(data_dict, filename='output.xlsx'):
         for sheet_name, data in data_dict.items():
             df = pd.DataFrame(list(data.items()), columns=['Key', 'Value'])
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+def convert_data_in_file(filename):
+    converted_data = []
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file:
+            line = line.strip().lower()
+            # Check if the line contains glyphs (Chinese, Japanese, Korean, etc.)
+            if re.match(r'^[\u4e00-\u9fff]+$', line):
+                # Convert glyphs to Unicode without 'U+' prefix and in lowercase
+                unicode_line = ' '.join([f'{ord(glyph):04x}' for glyph in line])
+                converted_data.append(unicode_line)
+            # Check if the line contains Unicode representations without 'U+' prefix
+            elif re.match(r'^([a-f0-9]{4,5}\s?)+$', line):
+                # Convert Unicode to glyphs
+                unicodes = line.split()
+                glyphs_line = ''.join([chr(int(unicode_code, 16)) for unicode_code in unicodes])
+                converted_data.append(glyphs_line)
+            else:
+                # If the format is not recognized, keep the original line
+                converted_data.append(line)
+
+def glyph_combinations_analysis(glyph_data):
+    glyph_combinations = {}
+
+    # Собираем информацию о комбинациях графем
+    for unicode, glyphs in glyph_data.items():
+        for i, glyph in enumerate(glyphs):
+            if glyph not in glyph_combinations:
+                glyph_combinations[glyph] = {}
+            for other_glyph in glyphs[:i] + glyphs[i+1:]:
+                glyph_combinations[glyph][other_glyph] = glyph_combinations[glyph].get(other_glyph, 0) + 1
+
+    # Подготавливаем данные для вывода в Excel
+    data_for_excel = []
+    for glyph, combinations in glyph_combinations.items():
+        row = [glyph]
+        combinations_str = ', '.join([f'{g}: {count}' for g, count in combinations.items()])
+        row.append(combinations_str)
+        data_for_excel.append(row)
+    return data_for_excel
