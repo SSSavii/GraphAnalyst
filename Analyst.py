@@ -1,5 +1,7 @@
 import pandas as pd
 import re
+import os
+from openpyxl import load_workbook
 # Считываем данные из файла и сохраняем в словарь
 def read_data_from_file(filename):
     glyph_data = {}
@@ -69,11 +71,37 @@ def find_same_glyph_sets(glyph_data):
     same_glyph_sets = {k: v for k, v in same_glyph_sets.items() if len(v) >= 2}
     return same_glyph_sets
 # Функция для вывода данных в Excel
+import pandas as pd
+import os
+from openpyxl import load_workbook
+
 def output_to_excel(data_dict, filename='output.xlsx'):
-    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+    try:
+        book_exists = os.path.exists(filename)
+        if book_exists:
+            book = load_workbook(filename)
+            print(f"Файл '{filename}' найден. Добавляем/обновляем листы.")
+            writer = pd.ExcelWriter(filename, engine='openpyxl', mode='a')
+            writer.book = book
+        else:
+            print(f"Файл '{filename}' не найден. Создаем новый файл.")
+            writer = pd.ExcelWriter(filename, engine='openpyxl')
+            book = writer.book
+
         for sheet_name, data in data_dict.items():
-            df = pd.DataFrame(list(data.items()), columns=['Key', 'Value'])
+            df = pd.DataFrame(data)
+            if sheet_name in book.sheetnames:
+                book.remove(book[sheet_name])
+                print(f"Лист '{sheet_name}' найден. Обновляем данные.")
+            else:
+                print(f"Создаем лист '{sheet_name}'.")
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+        writer.save()
+        writer.close()
+        print(f"Данные успешно сохранены в файл '{filename}'.")
+    except Exception as e:
+        print(f"Произошла ошибка при записи в файл '{filename}': {e}")
 def convert_data_in_file(filename):
     converted_data = []
     with open(filename, 'r', encoding='utf-8') as file:
