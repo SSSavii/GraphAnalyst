@@ -19,17 +19,17 @@ def count_glyphs(glyph_data):
     for glyphs in glyph_data.values():
         for glyph in glyphs:
             glyph_count[glyph] = glyph_count.get(glyph, 0) + 1
-    sorted_glyph_count = {k: glyph_count[k] for k in sorted(glyph_count, key=lambda x: int(x))}
-    return sorted_glyph_count
+    result_list = [{"Glyph": k, "Count": v} for k, v in glyph_count.items()]
+    return result_list
 
 # Функция для поиска символов с повторяющимися графемами
 def find_repeated_glyphs(glyph_data):
-    repeated_glyphs = {}
+    repeated_glyphs = []
     for unicode, glyphs in glyph_data.items():
         for glyph in set(glyphs):
             count = glyphs.count(glyph)
             if count > 1:
-                repeated_glyphs[glyph] = (unicode, count)
+                repeated_glyphs.append({"Glyph": glyph, "Unicode": unicode, "Count": count})
     return repeated_glyphs
 
 # Функция для поиска всех повторяющихся паттернов графем
@@ -46,7 +46,7 @@ def find_all_repeated_patterns(glyph_data):
                         glyph_pairs[glyph_pair].add(unicode)
                     else:
                         glyph_pairs[glyph_pair] = {unicode}
-    repeated_patterns = {pair: unicodes for pair, unicodes in glyph_pairs.items() if len(unicodes) > 1}
+    repeated_patterns = [{"Pair": pair, "Unicodes": list(unicodes)} for pair, unicodes in glyph_pairs.items() if len(unicodes) > 1]
     return repeated_patterns
 
 def count_glyphs_in_uni(glyph_data):
@@ -54,54 +54,30 @@ def count_glyphs_in_uni(glyph_data):
     for glyphs in glyph_data.values():
         glyph_count = len(glyphs)
         count_dict[glyph_count] = count_dict.get(glyph_count, 0) + 1
-    return count_dict
+    result_list = [{"GlyphsInUnicode": k, "Count": v} for k, v in count_dict.items()]
+    return result_list
 
 def find_same_glyph_sets(glyph_data):
     same_glyph_sets = {}
     for unicode, glyphs in glyph_data.items():
-        sorted_glyphs = tuple(sorted(glyphs))  # Сортируем графемы для их сравнения
+        sorted_glyphs = tuple(sorted(glyphs))
         if sorted_glyphs in same_glyph_sets:
-            # Если набор графем уже есть в словаре и уникод отсутствует в списке, добавляем его
-            if unicode not in same_glyph_sets[sorted_glyphs]:
-                same_glyph_sets[sorted_glyphs].append(unicode)
+            same_glyph_sets[sorted_glyphs].append(unicode)
         else:
-            # Если набор графем еще не встречался, добавляем его в словарь с единственным уникодом
             same_glyph_sets[sorted_glyphs] = [unicode]
-    # Фильтруем словарь, оставляя только те наборы графем, которые имеют 2 или более уникода
-    same_glyph_sets = {k: v for k, v in same_glyph_sets.items() if len(v) >= 2}
-    return same_glyph_sets
-# Функция для вывода данных в Excel
-import pandas as pd
-import os
-from openpyxl import load_workbook
+    result_list = [{"GlyphSet": glyphs, "Unicodes": unicodes} for glyphs, unicodes in same_glyph_sets.items() if len(unicodes) >= 2]
+    return result_list
 
 def output_to_excel(data_dict, filename='output.xlsx'):
     try:
-        book_exists = os.path.exists(filename)
-        if book_exists:
-            book = load_workbook(filename)
-            print(f"Файл '{filename}' найден. Добавляем/обновляем листы.")
-            writer = pd.ExcelWriter(filename, engine='openpyxl', mode='a')
-            writer.book = book
-        else:
-            print(f"Файл '{filename}' не найден. Создаем новый файл.")
-            writer = pd.ExcelWriter(filename, engine='openpyxl')
-            book = writer.book
-
-        for sheet_name, data in data_dict.items():
-            df = pd.DataFrame(data)
-            if sheet_name in book.sheetnames:
-                book.remove(book[sheet_name])
-                print(f"Лист '{sheet_name}' найден. Обновляем данные.")
-            else:
-                print(f"Создаем лист '{sheet_name}'.")
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-        writer.save()
-        writer.close()
-        print(f"Данные успешно сохранены в файл '{filename}'.")
+        with pd.ExcelWriter(filename, engine='openpyxl', mode='a' if os.path.exists(filename) else 'w') as writer:
+            for sheet_name, data in data_dict.items():
+                if not isinstance(data, pd.DataFrame):
+                    data = pd.DataFrame(data)
+                data.to_excel(writer, sheet_name=sheet_name, index=False)
+        print(f"Data successfully saved to '{filename}'.")
     except Exception as e:
-        print(f"Произошла ошибка при записи в файл '{filename}': {e}")
+        print(f"An error occurred while writing to the file '{filename}': {e}")
 def convert_data_in_file(filename):
     converted_data = []
     with open(filename, 'r', encoding='utf-8') as file:
@@ -141,3 +117,9 @@ def glyph_combinations_analysis(glyph_data):
         row.append(combinations_str)
         data_for_excel.append(row)
     return data_for_excel
+def run_analysis(analysis_function):
+    data_filename = "Data(моя).txt"
+    excel_filename = 'output.xlsx'
+    glyph_data = read_data_from_file(data_filename)
+    result = analysis_function(glyph_data)
+    output_to_excel({analysis_function.__name__: result}, excel_filename)
