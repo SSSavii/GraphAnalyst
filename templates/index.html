@@ -166,55 +166,70 @@
     }
 
      function uploadAndAnalyze(analysisFunctionName) {
-            var fileInput = document.getElementById(analysisFunctionName === "convert_data_in_file" ? 'file-input-converter' : 'file-input-analytics');
-            var file = fileInput.files[0];
-            var button = document.querySelector(`button[onclick="uploadAndAnalyze('${analysisFunctionName}')"]`);
-            var originalButtonText = button.innerText; // сохраняем первоначальный текст кнопки
+  var fileInput = document.getElementById('file-input-analytics');
+  var file = fileInput.files[0];
+  var button = document.querySelector(`[onclick="uploadAndAnalyze('${analysisFunctionName}')"]`);
+  var originalButtonText = button.innerText;
 
-            if (file) {
-                var formData = new FormData();
-                formData.append('file', file);
+  if (file) {
+      var formData = new FormData();
+      formData.append('file', file);
 
-                button.innerText = 'Анализируется...';
+      button.innerText = 'Анализируется...';
 
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        return fetch(`/analyze/${analysisFunctionName}`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ filename: file.name })
-                        });
-                    } else {
-                        throw new Error(data.error);
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        button.classList.add('completed');
-                        button.innerText = 'Анализ завершён';
-                        setTimeout(() => {
-                            button.classList.remove('completed');
-                            button.innerText = originalButtonText;
-                        }, 3000); // Возвращаем текст кнопки через 3 секунды
-                    } else {
-                        throw new Error('Ошибка при анализе');
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                    alert('Произошла ошибка: ' + error.toString());
-                    button.innerText = originalButtonText; // Восстанавливаем текст кнопки
-                });
-            } else {
-                alert('Пожалуйста, выберите файл для анализа.');
-            }
-        }
+      fetch('/upload', {
+          method: 'POST',
+          body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              // Теперь нужно проверить, что файл был загружен и отправить на анализ
+              return fetch('/analyze', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({
+                      filename: file.name, // используйте file.name, чтобы избежать путаницы
+                      function_name: analysisFunctionName
+                  })
+              });
+          } else {
+              // В случае ошибки загрузки файла, возвращаем текст кнопки к первоначальному
+              button.innerText = originalButtonText;
+              throw new Error(data.error);
+          }
+      })
+      // Обработка ответа от функции анализа
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              // Функция анализа выполнена успешно
+              button.classList.add('completed');
+              button.innerText = 'Анализ завершен';
+              setTimeout(() => {
+                  button.classList.remove('completed');
+                  button.innerText = originalButtonText;
+              }, 3000);
+
+              // Отображение кнопки для скачивания результатов (если необходимо)
+              // Здесь вам нужно реализовать логику отображения ссылки на скачивание файла
+          } else {
+              // В случае ошибки в функции анализа, возвращаем текст кнопки к первоначальному
+              button.innerText = originalButtonText;
+              throw new Error(data.error);
+          }
+      })
+      .catch(error => {
+          // Логирование ошибки и информирование пользователя
+          console.error('Произошла ошибка:', error);
+          alert('Произошла ошибка: ' + error.toString());
+          button.innerText = originalButtonText;
+      });
+  } else {
+      // Оповещение пользователя о необходимости выбора файла перед анализом
+      alert('Пожалуйста, выберите файл для анализа.');
+  }
+}
 
         function download(filename) {
             window.location.href = `/download/${filename}`;

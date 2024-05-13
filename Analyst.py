@@ -2,6 +2,7 @@ import pandas as pd
 import re
 import os
 from openpyxl import load_workbook
+from openpyxl.workbook import Workbook
 # Считываем данные из файла и сохраняем в словарь
 def read_data_from_file(filename):
     glyph_data = {}
