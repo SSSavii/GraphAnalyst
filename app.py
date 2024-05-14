@@ -42,7 +42,6 @@ def upload_file():
         return jsonify({"error": "Тип файла не допускается"}), 400
 
 @app.route('/analyze', methods=['POST'])
-@app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json()
     filename = data.get('filename')
@@ -54,8 +53,9 @@ def analyze():
     upload_dir = app.config['UPLOAD_FOLDER']
     download_dir = app.config['DOWNLOAD_FOLDER']
 
-    file_path = os.path.join(upload_dir, secure_filename(filename))
-    results_filename = secure_filename(filename).rsplit('.', 1)[0] + '_results.xlsx'
+    safe_filename = secure_filename(filename)
+    file_path = os.path.join(upload_dir, safe_filename)
+    results_filename = safe_filename.rsplit('.', 1)[0] + '_results.xlsx'  # Имя итогового файла
     results_file_path = os.path.join(download_dir, results_filename)
 
     if not os.path.exists(upload_dir):
@@ -63,10 +63,10 @@ def analyze():
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
 
-    # Проверяем, есть ли файл, который необходимо проанализировать
     if not os.path.exists(file_path):
         return jsonify({'error': 'Файл не найден'}), 404
 
+    # Считываем данные для анализа
     glyph_data = read_data_from_file(file_path)
 
     analysis_functions = {
@@ -94,7 +94,12 @@ def analyze():
 
 @app.route('/download/<path:filename>', methods=['GET'])
 def download(filename):
-    return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
+    print(f"Запрошенный файл: {filename}") # Добавьте эту строку для отладки
+    try:
+        return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
+    except FileNotFoundError:
+        print(f"Файл {filename} не найден в {DOWNLOAD_FOLDER}") # Для отладки
+        return jsonify({'error': 'Файл не найден'}), 404
 
 
 @app.route('/favicon.ico')
