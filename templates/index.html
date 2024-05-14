@@ -127,8 +127,8 @@
     <h2>Конвертор</h2>
     <div class="drop-label">Перетащите файл сюда</div>
     <input type="file" id="file-input-converter" accept=".txt"/>
-    <button class="button" title="Заменяет юникод иероглифа иероглифом и наоборот" id="convert-button">Сконвертировать</button>
-    <button class="download-button" title="Скачать результаты конвертации" onclick="download('conversion_results.xlsx')">Скачать результаты конвертации</button>
+    <button class="button" title="Заменяет юникод иероглифа иероглифом и наоборот" onclick="handleConvertAndDownload()">Сконвертировать</button>
+    <button class="download-button" title="Скачать результаты конвертации" style="display: none;" onclick="download('conversion_results.xlsx')">Скачать результаты конвертации</button>
 </div>
 
 <script>
@@ -222,6 +222,40 @@
     } else {
         alert('Пожалуйста, выберите файл для анализа.');
     }
+}
+
+function handleConvertAndDownload() {
+    var fileInput = document.getElementById('file-input-converter');
+    var file = fileInput.files[0]; // Получаем выбранный файл
+    if (!file) {
+        alert('Пожалуйста, выберите файл.');
+        return;
+    }
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/convert', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // После успешной конвертации автоматически запускаем скачивание файла.
+            // Предполагаем, что сервер возвращает имя сконвертированного файла в ответе, в поле data.filename
+            download(data.filename);
+        } else {
+            throw new Error("Конвертация не удалась: " + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Произошла ошибка при конвертации файла:', error);
+        alert('Произошла ошибка: ' + error);
+    });
+}
+
+function download(filename) {
+    window.location.href = `/download/${filename}`;
 }
 
 function download(filename) {

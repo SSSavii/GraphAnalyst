@@ -102,6 +102,26 @@ def download(filename):
         return jsonify({'error': 'Файл не найден'}), 404
 
 
+@app.route('/convert', methods=['POST'])
+def convert():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file and allowed_file(file.filename):
+        # Сохраняем полученный файл в папке 'uploads'
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Вызываем функцию конвертации
+        convert_data_in_file(file_path)
+
+        # Теперь файл сохранен в папке 'downloads' с тем же именем
+        return jsonify({"success": True, "filename": filename}), 200
+    else:
+        return jsonify({"error": "File not allowed"}), 400
+
+
 @app.route('/favicon.ico')
 def favicon():
     return '', 204

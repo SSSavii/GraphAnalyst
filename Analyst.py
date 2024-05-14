@@ -98,6 +98,10 @@ def convert_data_in_file(filename):
             else:
                 # If the format is not recognized, keep the original line
                 converted_data.append(line)
+    output_path = os.path.join('downloads', os.path.basename(filename))
+    with open(output_path, 'w', encoding='utf-8') as output_file:
+        for line in converted_data:
+            output_file.write(line + '\n')
 
 def glyph_combinations_analysis(glyph_data):
     glyph_combinations = {}
