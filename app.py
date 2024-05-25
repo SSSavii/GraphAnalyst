@@ -1,30 +1,35 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
-
+import sys
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from openpyxl.workbook import Workbook
-
 from Analyst import (read_data_from_file, count_glyphs, find_repeated_glyphs, find_all_repeated_patterns,
                      count_glyphs_in_uni, find_same_glyph_sets, output_to_excel, glyph_combinations_analysis,
                      convert_data_in_file)
 from werkzeug.utils import secure_filename
-from openpyxl import load_workbook
-UPLOAD_FOLDER = 'uploads'
-DOWNLOAD_FOLDER = 'downloads'
+
 ALLOWED_EXTENSIONS = {'txt', 'csv'}
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER  # убедитесь что добавили эту строку
+# Определение базового пути
+if getattr(sys, "frozen", False):
+    # Приложение собрано в exe
+    base_path = sys._MEIPASS
+else:
+    # Приложение запускается в режиме отладки
+    base_path = os.path.abspath(".")
 
+UPLOAD_FOLDER = 'uploads'
+DOWNLOAD_FOLDER = 'downloads'
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = os.path.join(base_path, UPLOAD_FOLDER)
+app.config['DOWNLOAD_FOLDER'] = os.path.join(base_path, DOWNLOAD_FOLDER)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -66,7 +71,7 @@ def analyze():
     if not os.path.exists(file_path):
         return jsonify({'error': 'Файл не найден'}), 404
 
-    # Считываем данные для анализа
+        # Считываем данные для анализа
     glyph_data = read_data_from_file(file_path)
 
     analysis_functions = {
@@ -76,7 +81,7 @@ def analyze():
         'count_glyphs_in_uni': count_glyphs_in_uni,
         'find_same_glyph_sets': find_same_glyph_sets,
         'glyph_combinations_analysis': glyph_combinations_analysis,
-        # ... Все соответствующие функции анализа из модуля Analyst
+        # Добавьте другие функции анализа, если необходимо
     }
 
     if function_name in analysis_functions:
@@ -87,25 +92,25 @@ def analyze():
         output_to_excel({function_name: analysis_result}, results_file_path)
 
         return jsonify(
-            {"success": True, "message": f"Анализ '{function_name}' завершен", "results_file": results_filename})
+            {"success": True, "message": f"Анализ '{function_name}' завершен", "results_file": results_filename}
+        )
     else:
         return jsonify({'error': 'Указанная функция анализа не существует'}), 404
 
 
 @app.route('/download/<path:filename>', methods=['GET'])
 def download(filename):
-    print(f"Запрошенный файл: {filename}") # Добавьте эту строку для отладки
     try:
-        return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
+        return send_from_directory(app.config['DOWNLOAD_FOLDER'], filename, as_attachment=True)
     except FileNotFoundError:
-        print(f"Файл {filename} не найден в {DOWNLOAD_FOLDER}") # Для отладки
+        print(f"Файл {filename} не найден в {app.config['DOWNLOAD_FOLDER']}")  # Для отладки
         return jsonify({'error': 'Файл не найден'}), 404
 
 
 @app.route('/convert', methods=['POST'])
 def convert():
     if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
+        return jsonify({"error": "Нет части файла"}), 400
     file = request.files['file']
     if file and allowed_file(file.filename):
         # Сохраняем полученный файл в папке 'uploads'
@@ -119,7 +124,7 @@ def convert():
         # Теперь файл сохранен в папке 'downloads' с тем же именем
         return jsonify({"success": True, "filename": filename}), 200
     else:
-        return jsonify({"error": "File not allowed"}), 400
+        return jsonify({"error": "Тип файла не допускается"}), 400
 
 
 @app.route('/favicon.ico')
