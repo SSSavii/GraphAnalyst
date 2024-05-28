@@ -35,6 +35,7 @@ exe = EXE(
     strip=False,
     upx=True,
     console=True,
+    icon=r'C:\Users\User\Desktop\Курсовая\icon.ico'  # Путь к иконке
 )
 
 coll = COLLECT(
@@ -45,5 +46,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='app'
+    name='GraphAnalyst'
 )

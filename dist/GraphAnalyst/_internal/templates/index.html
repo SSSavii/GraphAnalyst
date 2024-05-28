@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитическое приложение</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            background: url('/static/background_image.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .nav-buttons {
+            width: 100%;
+            display: flex;
+            justify-content: space-evenly;
+            margin-top: 10px;
+        }
+        .nav-button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .nav-button.active {
+            background-color: #0056b3;
+        }
+        .section {
+            width: 80%;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            display: none;
+            position: relative;
+            border: 2px dashed #ccc;
+        }
+        .section.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .button, .download-button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #ffffff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: background-color 0.3s, transform 0.2s;
+            width: 200px;
+        }
+        .button:hover, .download-button:hover {
+            background-color: #0056b3;
+        }
+        .button:active, .download-button:active {
+            transform: scale(0.95);
+        }
+        .button.completed, .download-button.completed {
+            background-color: #28a745; /* Индикация успешного выполнения */
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+        }
+        .drop-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ccc;
+            text-align: center;
+            display: none;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .section.dragover {
+            background-color: rgba(0,123,255,0.3);
+            border-color: #007bff;
+        }
+        .section.dragover .drop-label {
+            display: block;
+            color: white;
+        }
+    </style>
+</head>
+<body ondragover="event.preventDefault();" ondrop="event.preventDefault();">
+
+<nav class="nav-buttons">
+    <button class="nav-button active" onclick="switchSection('analytics-container')">Аналитика</button>
+    <button class="nav-button" onclick="switchSection('converter-container')">Конвертор</button>
+</nav>
+
+<div class="section active" id="analytics-container" ondrop="handleDrop(event, 'analytics')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+    <h2>Аналитика</h2>
+    <div class="drop-label">Перетащите файл сюда</div>
+    <input type="file" id="file-input-analytics" accept=".txt"/>
+    <div class="button-container">
+        <button class="button" title="Подсчитывает количество графем в документе, выводит результат в эксель файл в два столбца код графемы кол-во использований в базе" onclick="uploadAndAnalyze('count_glyphs')">Кол-во графем</button>
+        <button class="button" title="Находит повторяющиеся графемы, выводит код графемы, Юникод иероглифа и сколько раз в нём используется эта графема (срабатывает только если графема использовалась больше 1 раза)" onclick="uploadAndAnalyze('find_repeated_glyphs')">Повторяющиеся графемы</button>
+        <button class="button" title="Ищет часто используемые пары графем, выводит пару графем и юникоды иероглифов в которых они используются порядок использования не важен (срабатывает только если число иероглифов в которых используется эта пара больше 1)" onclick="uploadAndAnalyze('find_all_repeated_patterns')">Часто используемые пары графем</button>
+        <button class="button" title="Считает длины иероглифов, выводит кол-во графем и сколлько иероглифов состоит из такого кол-ва" onclick="uploadAndAnalyze('count_glyphs_in_uni')">Длины иероглифов</button>
+        <button class="button" title="Находит одинаковые наборы графем, Выводит иероглифы которые сотоят из полностью одинаковых наборов графем" onclick="uploadAndAnalyze('find_same_glyph_sets')">Одинаковые наборы графем</button>
+        <button class="button" title="Анализирует комбинации графем, выводит код графемы и какие графемы сколько раз использовались вместе с ней" onclick="uploadAndAnalyze('glyph_combinations_analysis')">Анализ комбинаций графем</button>
+    </div>
+    <button class="download-button" title="Скачать результаты анализа" onclick="download('analytical_results.xlsx')">Скачать результаты анализа</button>
+</div>
+
+<div class="section" id="converter-container" ondrop="handleDrop(event, 'converter')" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+    <h2>Конвертор</h2>
+    <div class="drop-label">Перетащите файл сюда</div>
+    <input type="file" id="file-input-converter" accept=".txt"/>
+    <button class="button" title="Заменяет юникод иероглифа иероглифом и наоборот" onclick="handleConvertAndDownload()">Сконвертировать</button>
+    <button class="download-button" title="Скачать результаты конвертации" style="display: none;" onclick="download('conversion_results.xlsx')">Скачать результаты конвертации</button>
+</div>
+
+<script>
+    function switchSection(sectionId) {
+        var sections = document.querySelectorAll('.section');
+        sections.forEach(function(section) {
+            section.classList.remove('active');
+            section.classList.remove('dragover');
+        });
+        var navButtons = document.querySelectorAll('.nav-button');
+        navButtons.forEach(function(button) {
+            button.classList.remove('active');
+        });
+        document.getElementById(sectionId).classList.add('active');
+        document.querySelector('button[onclick="switchSection(\'' + sectionId + '\')"]').classList.add('active');
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('dragover');
+    }
+
+    function handleDragLeave(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+    }
+
+    function handleDrop(event, section) {
+        event.preventDefault();
+        var dataTransfer = event.dataTransfer;
+        var files = dataTransfer.files;
+        var fileInput = section === 'analytics' ? document.getElementById('file-input-analytics') : document.getElementById('file-input-converter');
+        fileInput.files = files;
+        event.currentTarget.classList.remove('dragover');
+    }
+
+     function uploadAndAnalyze(analysisFunctionName) {
+    var fileInput = document.getElementById('file-input-analytics');
+    var file = fileInput.files[0];
+    var button = document.querySelector(`[onclick="uploadAndAnalyze('${analysisFunctionName}')"]`);
+    var originalButtonText = button.innerText;
+    var downloadButton = document.querySelector('.download-button'); // Ссылка на кнопку скачивания
+
+    if (file) {
+        var formData = new FormData();
+        formData.append('file', file);
+
+        button.innerText = 'Анализируется...';
+
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Отправляем запрос на анализ файла
+                return fetch('/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        filename: data.filename, // Используем имя файла, полученное от сервера
+                        function_name: analysisFunctionName
+                    })
+                });
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                button.classList.add('completed');
+                button.innerText = 'Анализ завершен';
+                // Обновляем href для кнопки скачивания, используя имя файла скрипта скачивания
+                downloadButton.onclick = function() { download(data.results_file); };
+                downloadButton.style.display = 'inline'; // Делаем кнопку видимой
+                setTimeout(() => {
+                    button.classList.remove('completed');
+                    button.innerText = originalButtonText;
+                }, 3000);
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Произошла ошибка:', error);
+            alert('Произошла ошибка: ' + error.toString());
+            button.innerText = originalButtonText;
+        });
+    } else {
+        alert('Пожалуйста, выберите файл для анализа.');
+    }
+}
+
+function handleConvertAndDownload() {
+    var fileInput = document.getElementById('file-input-converter');
+    var file = fileInput.files[0]; // Получаем выбранный файл
+    if (!file) {
+        alert('Пожалуйста, выберите файл.');
+        return;
+    }
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/convert', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // После успешной конвертации автоматически запускаем скачивание файла.
+            // Предполагаем, что сервер возвращает имя сконвертированного файла в ответе, в поле data.filename
+            download(data.filename);
+        } else {
+            throw new Error("Конвертация не удалась: " + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Произошла ошибка при конвертации файла:', error);
+        alert('Произошла ошибка: ' + error);
+    });
+}
+
+function download(filename) {
+    window.location.href = `/download/${filename}`;
+}
+
+function download(filename) {
+    window.location.href = `/download/${filename}`;
+}
+    </script>
+
+</body>
+</html>

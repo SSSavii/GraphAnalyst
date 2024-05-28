@@ -58,24 +58,35 @@
         .button, .download-button {
             padding: 10px;
             margin: 10px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             color: #ffffff;
-            background-color: #007bff;
             border: none;
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             transition: background-color 0.3s, transform 0.2s;
             width: 200px;
         }
-        .button:hover, .download-button:hover {
+        .button {
+            background-color: #007bff;
+        }
+        .button:hover {
             background-color: #0056b3;
         }
-        .button:active, .download-button:active {
+        .button:active {
             transform: scale(0.95);
         }
-        .button.completed, .download-button.completed {
+        .button.completed {
             background-color: #28a745; /* Индикация успешного выполнения */
+        }
+        .download-button {
+            background-color: #28a745; /* Зеленый */
+        }
+        .download-button:hover {
+            background-color: #218838;
+        }
+        .download-button:active {
+            transform: scale(0.95);
         }
         input[type="file"] {
             margin-bottom: 15px;
@@ -117,7 +128,7 @@
         <button class="button" title="Находит повторяющиеся графемы, выводит код графемы, Юникод иероглифа и сколько раз в нём используется эта графема (срабатывает только если графема использовалась больше 1 раза)" onclick="uploadAndAnalyze('find_repeated_glyphs')">Повторяющиеся графемы</button>
         <button class="button" title="Ищет часто используемые пары графем, выводит пару графем и юникоды иероглифов в которых они используются порядок использования не важен (срабатывает только если число иероглифов в которых используется эта пара больше 1)" onclick="uploadAndAnalyze('find_all_repeated_patterns')">Часто используемые пары графем</button>
         <button class="button" title="Считает длины иероглифов, выводит кол-во графем и сколлько иероглифов состоит из такого кол-ва" onclick="uploadAndAnalyze('count_glyphs_in_uni')">Длины иероглифов</button>
-        <button class="button" title="Находит одинаковые наборы графем, Выводит иероглифы которые сотоят из полностью одинаковых наборов графем" onclick="uploadAndAnalyze('find_same_glyph_sets')">Одинаковые наборы графем</button>
+        <button class="button" title="Находит одинаковые наборы графем, Выводит иероглифы которые состоят из полностью одинаковых наборов графем" onclick="uploadAndAnalyze('find_same_glyph_sets')">Одинаковые наборы графем</button>
         <button class="button" title="Анализирует комбинации графем, выводит код графемы и какие графемы сколько раз использовались вместе с ней" onclick="uploadAndAnalyze('glyph_combinations_analysis')">Анализ комбинаций графем</button>
     </div>
     <button class="download-button" title="Скачать результаты анализа" onclick="download('analytical_results.xlsx')">Скачать результаты анализа</button>
@@ -165,103 +176,99 @@
         event.currentTarget.classList.remove('dragover');
     }
 
-     function uploadAndAnalyze(analysisFunctionName) {
-    var fileInput = document.getElementById('file-input-analytics');
-    var file = fileInput.files[0];
-    var button = document.querySelector(`[onclick="uploadAndAnalyze('${analysisFunctionName}')"]`);
-    var originalButtonText = button.innerText;
-    var downloadButton = document.querySelector('.download-button'); // Ссылка на кнопку скачивания
+    function uploadAndAnalyze(analysisFunctionName) {
+        var fileInput = document.getElementById('file-input-analytics');
+        var file = fileInput.files[0];
+        var button = document.querySelector(`[onclick="uploadAndAnalyze('${analysisFunctionName}')"]`);
+        var originalButtonText = button.innerText;
+        var downloadButton = document.querySelector('.download-button'); // Ссылка на кнопку скачивания
 
-    if (file) {
+        if (file) {
+            var formData = new FormData();
+            formData.append('file', file);
+
+            button.innerText = 'Анализируется...';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Отправляем запрос на анализ файла
+                    return fetch('/analyze', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            filename: data.filename, // Используем имя файла, полученное от сервера
+                            function_name: analysisFunctionName
+                        })
+                    });
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    button.classList.add('completed');
+                    button.innerText = 'Анализ завершен';
+                    // Обновляем href для кнопки скачивания, используя имя файла скрипта скачивания
+                    downloadButton.onclick = function() { download(data.results_file); };
+                    downloadButton.style.display = 'inline'; // Делаем кнопку видимой
+                    setTimeout(() => {
+                        button.classList.remove('completed');
+                        button.innerText = originalButtonText;
+                    }, 3000);
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Произошла ошибка:', error);
+                alert('Произошла ошибка: ' + error.toString());
+                button.innerText = originalButtonText;
+            });
+        } else {
+            alert('Пожалуйста, выберите файл для анализа.');
+        }
+    }
+
+    function handleConvertAndDownload() {
+        var fileInput = document.getElementById('file-input-converter');
+        var file = fileInput.files[0]; // Получаем выбранный файл
+        if (!file) {
+            alert('Пожалуйста, выберите файл.');
+            return;
+        }
         var formData = new FormData();
         formData.append('file', file);
 
-        button.innerText = 'Анализируется...';
-
-        fetch('/upload', {
+        fetch('/convert', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Отправляем запрос на анализ файла
-                return fetch('/analyze', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        filename: data.filename, // Используем имя файла, полученное от сервера
-                        function_name: analysisFunctionName
-                    })
-                });
+                // После успешной конвертации автоматически запускаем скачивание файла.
+                // Предполагаем, что сервер возвращает имя сконвертированного файла в ответе, в поле data.filename
+                download(data.filename);
             } else {
-                throw new Error(data.error);
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                button.classList.add('completed');
-                button.innerText = 'Анализ завершен';
-                // Обновляем href для кнопки скачивания, используя имя файла скрипта скачивания
-                downloadButton.onclick = function() { download(data.results_file); };
-                downloadButton.style.display = 'inline'; // Делаем кнопку видимой
-                setTimeout(() => {
-                    button.classList.remove('completed');
-                    button.innerText = originalButtonText;
-                }, 3000);
-            } else {
-                throw new Error(data.error);
+                throw new Error("Конвертация не удалась: " + data.error);
             }
         })
         .catch(error => {
-            console.error('Произошла ошибка:', error);
-            alert('Произошла ошибка: ' + error.toString());
-            button.innerText = originalButtonText;
+            console.error('Произошла ошибка при конвертации файла:', error);
+            alert('Произошла ошибка: ' + error);
         });
-    } else {
-        alert('Пожалуйста, выберите файл для анализа.');
     }
-}
 
-function handleConvertAndDownload() {
-    var fileInput = document.getElementById('file-input-converter');
-    var file = fileInput.files[0]; // Получаем выбранный файл
-    if (!file) {
-        alert('Пожалуйста, выберите файл.');
-        return;
+    function download(filename) {
+        window.location.href = `/download/${filename}`;
     }
-    var formData = new FormData();
-    formData.append('file', file);
-
-    fetch('/convert', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // После успешной конвертации автоматически запускаем скачивание файла.
-            // Предполагаем, что сервер возвращает имя сконвертированного файла в ответе, в поле data.filename
-            download(data.filename);
-        } else {
-            throw new Error("Конвертация не удалась: " + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Произошла ошибка при конвертации файла:', error);
-        alert('Произошла ошибка: ' + error);
-    });
-}
-
-function download(filename) {
-    window.location.href = `/download/${filename}`;
-}
-
-function download(filename) {
-    window.location.href = `/download/${filename}`;
-}
-    </script>
+</script>
 
 </body>
 </html>
