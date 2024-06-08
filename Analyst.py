@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import os
+import sys
 from openpyxl import load_workbook
 from openpyxl.workbook import Workbook
 
@@ -22,7 +23,7 @@ def count_glyphs(glyph_data):
         for glyph in glyphs:
             glyph_count[glyph] = glyph_count.get(glyph, 0) + 1
     result_list = [{"Графемы": k, "Кол-во": v} for k, v in glyph_count.items()]
-    return result_list
+    return sorted(result_list, key=lambda x: x["Графемы"])
 
 # Функция для поиска символов с повторяющимися графемами
 def find_repeated_glyphs(glyph_data):
@@ -32,7 +33,7 @@ def find_repeated_glyphs(glyph_data):
             count = glyphs.count(glyph)
             if count > 1:
                 repeated_glyphs.append({"Графема": glyph, "Unicode": unicode, "Кол-во": count})
-    return repeated_glyphs
+    return sorted(repeated_glyphs, key=lambda x: x["Графема"])
 
 # Функция для поиска всех повторяющихся паттернов графем
 def find_all_repeated_patterns(glyph_data):
@@ -49,16 +50,18 @@ def find_all_repeated_patterns(glyph_data):
                     else:
                         glyph_pairs[glyph_pair] = {unicode}
     repeated_patterns = [{"Пара": pair, "Unicodes": list(unicodes)} for pair, unicodes in glyph_pairs.items() if len(unicodes) > 1]
-    return repeated_patterns
+    return sorted(repeated_patterns, key=lambda x: x["Пара"])
 
+# Подсчёт количества графем в каждом символе
 def count_glyphs_in_uni(glyph_data):
     count_dict = {}
     for glyphs in glyph_data.values():
         glyph_count = len(glyphs)
         count_dict[glyph_count] = count_dict.get(glyph_count, 0) + 1
     result_list = [{"Кол-во графем": k, "Кол-во иероглифов": v} for k, v in count_dict.items()]
-    return result_list
+    return sorted(result_list, key=lambda x: x["Кол-во графем"])
 
+# Функция для поиска одинаковых наборов графем
 def find_same_glyph_sets(glyph_data):
     same_glyph_sets = {}
     for unicode, glyphs in glyph_data.items():
@@ -68,7 +71,7 @@ def find_same_glyph_sets(glyph_data):
         else:
             same_glyph_sets[sorted_glyphs] = [unicode]
     result_list = [{"Набор графем": glyphs, "Unicodes": unicodes} for glyphs, unicodes in same_glyph_sets.items() if len(unicodes) >= 2]
-    return result_list
+    return sorted(result_list, key=lambda x: x["Набор графем"])
 
 # Новые названия листов
 analysisFunctionNames = {
@@ -80,18 +83,27 @@ analysisFunctionNames = {
     'glyph_combinations_analysis': 'Анализ комбинаций графем'
 }
 
-# Функция для вывода в Excel с новыми названиями листов
-def output_to_excel(data_dict, filename='output.xlsx'):
+# Функция для вывода в Excel с новыми названиями
+def output_to_excel(data_dict, filename='output.xlsx', sort=True):
     try:
         with pd.ExcelWriter(filename, engine='openpyxl', mode='a' if os.path.exists(filename) else 'w') as writer:
             for func_name, data in data_dict.items():
                 sheet_name = analysisFunctionNames.get(func_name, func_name)
                 if not isinstance(data, pd.DataFrame):
                     data = pd.DataFrame(data)
+                if sort:
+                    data = data.sort_values(by=data.columns[0])  # Сортировка по первому столбцу
                 data.to_excel(writer, sheet_name=sheet_name, index=False)
         print(f"Data successfully saved to '{filename}'.")
     except Exception as e:
         print(f"An error occurred while writing to the file '{filename}': {e}")
+
+# Функция для определения базового пути, учитывая возможное использование exe-файла
+def get_base_path():
+    if getattr(sys, 'frozen', False):  # Упакован в exe
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
 
 # Функция для конвертации данных в файле
 def convert_data_in_file(filename):
@@ -113,10 +125,19 @@ def convert_data_in_file(filename):
             else:
                 # If the format is not recognized, keep the original line
                 converted_data.append(line)
-    output_path = os.path.join('downloads', os.path.basename(filename))
+
+    base_path = get_base_path()
+    downloads_path = os.path.join(base_path, '_internal', 'downloads')
+
+    if not os.path.exists(downloads_path):
+        os.makedirs(downloads_path)
+
+    output_path = os.path.join(downloads_path, os.path.basename(filename))
     with open(output_path, 'w', encoding='utf-8') as output_file:
         for line in converted_data:
             output_file.write(line + '\n')
+
+    print(f"Data successfully converted and saved to '{output_path}'.")
 
 # Функция для анализа комбинаций графем
 def glyph_combinations_analysis(glyph_data):
@@ -133,11 +154,10 @@ def glyph_combinations_analysis(glyph_data):
     # Подготавливаем данные для вывода в Excel
     data_for_excel = []
     for glyph, combinations in glyph_combinations.items():
-        row = [glyph]
-        combinations_str = ', '.join([f'{g}: {count}' for g, count in combinations.items()])
-        row.append(combinations_str)
-        data_for_excel.append(row)
-    return data_for_excel
+        sorted_combinations = sorted(combinations.items(), key=lambda x: x[0])
+        combinations_str = ', '.join([f'{g}: {count}' for g, count in sorted_combinations])
+        data_for_excel.append({"Графема": glyph, "Комбинации": combinations_str})
+    return sorted(data_for_excel, key=lambda x: x["Графема"])
 
 # Функция для запуска анализа с использованием конкретной функции анализа
 def run_analysis(analysis_function):
