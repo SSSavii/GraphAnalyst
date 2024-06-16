@@ -2,11 +2,15 @@ import pandas as pd
 import re
 import os
 import sys
-from openpyxl import load_workbook
-from openpyxl.workbook import Workbook
 
 # Считываем данные из файла и сохраняем в словарь
 def read_data_from_file(filename):
+    """
+       Считывает данные из текстового файла и сохраняет их в словарь.
+
+       :param filename: Имя файла для чтения данных
+       :return: Словарь, где ключ - Unicode символ, а значение - список графем
+       """
     glyph_data = {}
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
@@ -18,6 +22,12 @@ def read_data_from_file(filename):
 
 # Функция для подсчёта графем
 def count_glyphs(glyph_data):
+    """
+        Подсчитывает количество каждой графемы в данных.
+
+        :param glyph_data: Словарь с данными о графемах
+        :return: Отсортированный список словарей с информацией о графемах и их количестве
+        """
     glyph_count = {}
     for glyphs in glyph_data.values():
         for glyph in glyphs:
@@ -27,6 +37,12 @@ def count_glyphs(glyph_data):
 
 # Функция для поиска символов с повторяющимися графемами
 def find_repeated_glyphs(glyph_data):
+    """
+        Находит символы с повторяющимися графемами.
+
+        :param glyph_data: Словарь с данными о графемах
+        :return: Отсортированный список словарей с информацией о повторяющихся графемах и их количестве
+        """
     repeated_glyphs = []
     for unicode, glyphs in glyph_data.items():
         for glyph in set(glyphs):
@@ -37,6 +53,12 @@ def find_repeated_glyphs(glyph_data):
 
 # Функция для поиска всех повторяющихся паттернов графем
 def find_all_repeated_patterns(glyph_data):
+    """
+        Находит все повторяющиеся пары графем в символах.
+
+        :param glyph_data: Словарь с данными о графемах
+        :return: Список словарей с информацией о парах графем и символах, где они встречаются
+        """
     glyph_pairs = {}
     for unicode, glyphs in glyph_data.items():
         seen_pairs = set()
@@ -54,6 +76,12 @@ def find_all_repeated_patterns(glyph_data):
 
 # Подсчёт количества графем в каждом символе
 def count_glyphs_in_uni(glyph_data):
+    """
+        Подсчитывает количество графем в каждом символе.
+
+        :param glyph_data: Словарь с данными о графемах
+        :return: Отсортированный список словарей с информацией о количестве графем в символах и количестве символов
+        """
     count_dict = {}
     for glyphs in glyph_data.values():
         glyph_count = len(glyphs)
@@ -63,6 +91,13 @@ def count_glyphs_in_uni(glyph_data):
 
 # Функция для поиска одинаковых наборов графем
 def find_same_glyph_sets(glyph_data):
+    """
+        Находит символы с одинаковыми наборами графем.
+
+        :param glyph_data: Словарь с данными о графемах
+        :return: Отсортированный список словарей с информацией о наборах
+        графем и символах, где они встречаются
+        """
     same_glyph_sets = {}
     for unicode, glyphs in glyph_data.items():
         sorted_glyphs = tuple(sorted(glyphs))
@@ -85,6 +120,13 @@ analysisFunctionNames = {
 
 # Функция для вывода в Excel с новыми названиями
 def output_to_excel(data_dict, filename='output.xlsx', sort=True):
+    """
+        Сохраняет результаты анализа в Excel файл.
+
+        :param data_dict: Словарь, где ключ - имя функции анализа, значение - результат анализа
+        :param filename: Имя Excel файла для сохранения результатов
+        :param sort: Флаг сортировки данных по первому столбцу
+        """
     try:
         with pd.ExcelWriter(filename, engine='openpyxl', mode='a' if os.path.exists(filename) else 'w') as writer:
             for func_name, data in data_dict.items():
@@ -100,6 +142,11 @@ def output_to_excel(data_dict, filename='output.xlsx', sort=True):
 
 # Функция для определения базового пути, учитывая возможное использование exe-файла
 def get_base_path():
+    """
+       Определяет базовый путь приложения, учитывая его возможную упаковку в exe файл.
+
+       :return: Базовый путь приложения
+       """
     if getattr(sys, 'frozen', False):  # Упакован в exe
         return os.path.dirname(sys.executable)
     else:
@@ -107,6 +154,11 @@ def get_base_path():
 
 # Функция для конвертации данных в файле
 def convert_data_in_file(filename):
+    """
+        Конвертирует данные в файле между текстовым представлением графем и их Unicode кодами.
+
+        :param filename: Имя файла для конвертации
+        """
     converted_data = []
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
@@ -141,6 +193,12 @@ def convert_data_in_file(filename):
 
 # Функция для анализа комбинаций графем
 def glyph_combinations_analysis(glyph_data):
+    """
+       Анализирует комбинации графем внутри каждого символа.
+
+       :param glyph_data: Словарь с данными о графемах
+       :return: Отсортированный список словарей с информацией о графемах и их комбинациях
+       """
     glyph_combinations = {}
 
     # Собираем информацию о комбинациях графем
@@ -161,6 +219,11 @@ def glyph_combinations_analysis(glyph_data):
 
 # Функция для запуска анализа с использованием конкретной функции анализа
 def run_analysis(analysis_function):
+    """
+        Запускает анализ данных с использованием конкретной функции анализа.
+
+        :param analysis_function: Функция анализа, которая будет применена к данным
+        """
     data_filename = "Data(моя).txt"
     excel_filename = 'output.xlsx'
     glyph_data = read_data_from_file(data_filename)
