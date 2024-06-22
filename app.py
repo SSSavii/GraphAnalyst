@@ -1,6 +1,7 @@
 import os
-import sys
-from flask import Flask, render_template, request, jsonify, send_from_directory
+import threading
+import time
+from flask import Flask, render_template, request, jsonify, send_from_directory, after_this_request
 from openpyxl.workbook import Workbook
 from Analyst import (read_data_from_file, count_glyphs, find_repeated_glyphs, find_all_repeated_patterns,
                      count_glyphs_in_uni, find_same_glyph_sets, output_to_excel, glyph_combinations_analysis,
@@ -9,20 +10,15 @@ from werkzeug.utils import secure_filename
 
 ALLOWED_EXTENSIONS = {'txt', 'csv'}
 
-# Определение базового пути
-if getattr(sys, "frozen", False):
-    # Приложение собрано в exe
-    base_path = sys._MEIPASS
-else:
-    # Приложение запускается в режиме отладки
-    base_path = os.path.abspath(".")
-
+base_path = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = 'uploads'
 DOWNLOAD_FOLDER = 'downloads'
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(base_path, UPLOAD_FOLDER)
 app.config['DOWNLOAD_FOLDER'] = os.path.join(base_path, DOWNLOAD_FOLDER)
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['DOWNLOAD_FOLDER'], exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -100,10 +96,30 @@ def analyze():
 
 @app.route('/download/<path:filename>', methods=['GET'])
 def download(filename):
+    download_folder = app.config['DOWNLOAD_FOLDER']
+    file_path = os.path.join(download_folder, filename)
+
+    @after_this_request
+    def remove_file(response):
+        def attempt_delete(path, max_attempts=5, wait_seconds=1):
+            """ Пытается удалить файл с несколькими попытками и задержками """
+            for _ in range(max_attempts):
+                try:
+                    os.remove(path)
+                    print(f"Файл {path} успешно удален.")
+                    return
+                except OSError as e:
+                    print(f"Ошибка при удалении файла {path}: {e}")
+                    time.sleep(wait_seconds)
+            print(f"Не удалось удалить файл {path} после {max_attempts} попыток.")
+
+        threading.Thread(target=attempt_delete, args=(file_path,)).start()
+        return response
+
     try:
-        return send_from_directory(app.config['DOWNLOAD_FOLDER'], filename, as_attachment=True)
+        return send_from_directory(download_folder, filename, as_attachment=True)
     except FileNotFoundError:
-        print(f"Файл {filename} не найден в {app.config['DOWNLOAD_FOLDER']}")  # Для отладки
+        print(f"Файл {filename} не найден в {download_folder}")  # Для отладки
         return jsonify({'error': 'Файл не найден'}), 404
 
 
@@ -119,9 +135,9 @@ def convert():
         file.save(file_path)
 
         # Вызываем функцию конвертации
-        convert_data_in_file(file_path)
+        convert_data_in_file(file_path, app.config['DOWNLOAD_FOLDER'])
 
-        # Теперь файл сохранен в папке 'downloads' с тем же именем
+        # Файл сохранен в папке 'downloads' с тем же именем
         return jsonify({"success": True, "filename": filename}), 200
     else:
         return jsonify({"error": "Тип файла не допускается"}), 400

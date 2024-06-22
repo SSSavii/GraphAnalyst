@@ -1,4 +1,4 @@
-('C:\\Users\\User\\Desktop\\Курсовая\\build\\app\\app.pkg',
+('C:\\Users\\User\\Desktop\\Курсовая\\build\\app\\GraphAnalyst.pkg',
  {'BINARY': True,
   'DATA': True,
   'EXECUTABLE': True,
